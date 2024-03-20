@@ -5,9 +5,9 @@ option go_package = "./proto";
 package greeting_service;
 
 service GreetingService {
-  rpc SayHello (NoParam) returns (HelloResponse);
+  rpc SayHello (HelloRequest) returns (HelloResponse);
   rpc SayHelloServerStream (NameList) returns (stream HelloResponse);
-  rpc SayHelloClientStream (stream NameList) returns (MessageList);
+  rpc SayHelloClientStream (stream HelloRequest) returns (MessageList);
   rpc SayHelloBidirectionalStream (stream HelloRequest) returns (stream HelloResponse);
 }
 
