@@ -77,9 +77,9 @@ func callSayHello(client pb.GreetingServiceClient) {
 
 func callSayHelloServerStream(client pb.GreetingServiceClient, names *pb.NameList) {
 	log.Printf("Streaming request started")
-	// ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	// defer cancel()
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	// ctx := context.Background()
 	stream, err := client.SayHelloServerStream(ctx, names)
 	if err != nil {
 		log.Fatalf("could not send names: %v", err)

@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"time"
 
 	pb "github.com/chienduynguyen1702/go-grpc/proto"
 	"google.golang.org/grpc"
@@ -50,7 +51,7 @@ func (s *helloServer) SayHelloServerStream(req *pb.NameList, stream pb.GreetingS
 		if err := stream.Send(res); err != nil {
 			return err
 		}
-		// time.Sleep(1 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 	return nil
 }
@@ -86,5 +87,6 @@ func (s *helloServer) SayHelloBidirectionalStream(stream pb.GreetingService_SayH
 		}); err != nil {
 			return err
 		}
+		log.Printf("Sent hello %s to client", req.Name)
 	}
 }
