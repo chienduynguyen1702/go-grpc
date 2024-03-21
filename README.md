@@ -319,7 +319,7 @@ func (s *helloServer) SayHelloServerStream(req *pb.NameList, stream pb.GreetingS
 }
 </code></pre>
 
-- Result
+- Result from client console
 ```
 1. SayHello
 2. SayHelloServerStream
