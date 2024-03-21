@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"log"
+	"time"
 
 	pb "github.com/chienduynguyen1702/go-grpc/proto"
 
@@ -47,4 +50,111 @@ menuLoop:
 			fmt.Println("Invalid option")
 		}
 	}
+}
+
+func callSayHello(client pb.GreetingServiceClient) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// Prompt the user to enter their name
+	fmt.Println("Enter your name: ")
+	var inputName string
+	_, err := fmt.Scanf("%s", &inputName)
+	if err != nil {
+		log.Fatalf("could not read name: %v", err)
+	}
+
+	// Call the SayHello method from the client
+	res, err := client.SayHello(ctx, &pb.HelloRequest{
+		Name: inputName,
+	})
+	if err != nil {
+		log.Fatalf("could not greet: %v", err)
+	}
+	log.Printf("received greeting: %s", res.Message)
+}
+
+func callSayHelloServerStream(client pb.GreetingServiceClient, names *pb.NameList) {
+	log.Printf("Streaming request started")
+	// ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	// defer cancel()
+	ctx := context.Background()
+	stream, err := client.SayHelloServerStream(ctx, names)
+	if err != nil {
+		log.Fatalf("could not send names: %v", err)
+	}
+	for {
+		res, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatalf("error while streaming: %v", err)
+		}
+		log.Printf("Received from server: %s", res.Message)
+	}
+	log.Printf("Streaming request completed")
+}
+
+func callSayHelloClientStream(client pb.GreetingServiceClient, names *pb.NameList) {
+	log.Printf("Client streaming request started")
+
+	stream, err := client.SayHelloClientStream(context.Background())
+	if err != nil {
+		log.Fatalf("could not create streaming client: %v", err)
+	}
+	for _, name := range names.Names {
+		req := &pb.HelloRequest{
+			Name: name,
+		}
+		if err := stream.Send(req); err != nil {
+			log.Fatalf("could not send name: %v", err)
+		}
+		log.Printf("Calling to server by : %s", name)
+		// time.Sleep(1 * time.Second)
+	}
+	res, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatalf("could not receive response: %v", err)
+	}
+	log.Printf("Received: %s", res.Messages)
+	log.Printf("Client streaming request completed")
+}
+
+func callSayHelloBidirectionStream(client pb.GreetingServiceClient, names *pb.NameList) {
+	log.Printf("Bidirectional streaming request started")
+
+	stream, err := client.SayHelloBidirectionalStream(context.Background())
+	if err != nil {
+		log.Fatalf("could not create streaming client: %v", err)
+	}
+	waitc := make(chan struct{})
+	go func() {
+		for {
+			res, err := stream.Recv()
+			if err != nil {
+				if err != io.EOF {
+					log.Fatalf("Failed to receive a note : %v", err)
+				}
+				break // Exit the loop if EOF is received
+			}
+			log.Printf("Received from server : %s", res.Message)
+		}
+		close(waitc)
+	}()
+	for _, name := range names.Names {
+		req := &pb.HelloRequest{
+			Name: name,
+		}
+		if err := stream.Send(req); err != nil {
+			log.Fatalf("Failed to send a note: %v", err)
+		}
+		log.Printf("Calling to server by : %s", name)
+	}
+	if err := stream.CloseSend(); err != nil {
+		log.Fatalf("Failed to close send: %v", err)
+	}
+	<-waitc
+	log.Printf("Bidirectional streaming request completed")
 }
