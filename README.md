@@ -349,7 +349,7 @@ SSL_MODE=true
 ```
 - Directory structure
 <pre>
-│   <b>.env<b>
+│   <b>.env</b>
 │   .env.example
 │   .gitignore
 │   go.mod
