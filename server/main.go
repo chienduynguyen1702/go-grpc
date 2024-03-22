@@ -8,7 +8,9 @@ import (
 	"time"
 
 	pb "github.com/chienduynguyen1702/go-grpc/proto"
+	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 const (
@@ -22,11 +24,36 @@ type helloServer struct {
 }
 
 func main() {
+	// Listen on port
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		panic(err)
 	}
-	grpcServer := grpc.NewServer()
+	// define a gRPC server attibutes
+	var grpcOptions grpc.ServerOption
+	var grpcServer *grpc.Server
+
+	// Load .env file
+	envFile, err := godotenv.Read(".env")
+	if err != nil {
+		panic(err.Error())
+	}
+	// Check if SSL_MODE is true, then enable SSL
+	sslMode := envFile["SSL_MODE"]
+	if sslMode == "true" {
+		certFileServer := "ssl/server.crt"
+		keyFileServer := "ssl/server.key"
+		creds, sslErr := credentials.NewServerTLSFromFile(certFileServer, keyFileServer)
+		if sslErr != nil {
+			log.Fatalf("Failed to generate credentials: %v", sslErr)
+		}
+		grpcOptions = grpc.Creds(creds)
+	}
+
+	// Create a gRPC server object
+	grpcServer = grpc.NewServer(grpcOptions)
+
+	// Register the service with the server
 	pb.RegisterGreetingServiceServer(grpcServer, &helloServer{})
 	log.Printf("Server listening at %s", lis.Addr())
 	if err := grpcServer.Serve(lis); err != nil {

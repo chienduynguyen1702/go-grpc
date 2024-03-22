@@ -5,20 +5,45 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"time"
 
 	pb "github.com/chienduynguyen1702/go-grpc/proto"
+	"github.com/joho/godotenv"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
-	port = "8080"
+	port   = "8080"
+	server = "localhost"
+	target = server + ":" + port
 )
 
 func main() {
-	conn, err := grpc.Dial("localhost:"+port, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	// Load .env file
+	err := godotenv.Load(".env")
+	if err != nil {
+		panic(err.Error())
+	}
+	var creds credentials.TransportCredentials
+	// Check if SSL_MODE is true, then enable SSL
+	sslMode := os.Getenv("SSL_MODE")
+	if sslMode == "true" {
+		certFileServer := "ssl/server.crt"
+		sslCreds, sslErr := credentials.NewClientTLSFromFile(certFileServer, server)
+		if sslErr != nil {
+			log.Fatalf("Failed to generate credentials: %v", sslErr)
+		}
+		creds = sslCreds
+	} else {
+		creds = insecure.NewCredentials()
+	}
+
+	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -58,7 +83,7 @@ func callSayHello(client pb.GreetingServiceClient) {
 	defer cancel()
 
 	// Prompt the user to enter their name
-	fmt.Println("Enter your name: ")
+	fmt.Printf("Enter your name: ")
 	var inputName string
 	_, err := fmt.Scanf("%s", &inputName)
 	if err != nil {
