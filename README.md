@@ -336,3 +336,102 @@ exit status 1
 ```
 
 ## <a id="ssl"></a>SSL
+
+### Initialization
+- To generate ssl cert, run:
+```make
+make gen-ssl-cert
+```
+
+- Set SSL_MODE in .env in root folder path
+```
+SSL_MODE=true
+```
+- Directory structure
+<pre>
+│   <b>.env<b>
+│   .env.example
+│   .gitignore
+│   go.mod
+│   go.sum
+│   makefile
+│   README.md
+│
+├───client
+│       main.go
+│
+├───proto
+│       greet.pb.go
+│       greet.proto
+│       greet_grpc.pb.go
+│
+├───server
+│       main.go
+│
+└───ssl
+        cert.conf
+        <b>server.crt
+        server.key</b>
+        ssl-gen.sh
+</pre>
+
+### Create Client with credentails
+
+```go
+	// Load .env file
+	err := godotenv.Load(".env")
+	if err != nil {
+		panic(err.Error())
+	}
+	var creds credentials.TransportCredentials
+	// Check if SSL_MODE is true, then enable SSL
+	sslMode := os.Getenv("SSL_MODE")
+	if sslMode == "true" {
+		certFileServer := "ssl/server.crt"
+		sslCreds, sslErr := credentials.NewClientTLSFromFile(certFileServer, server)
+		if sslErr != nil {
+			log.Fatalf("Failed to generate credentials: %v", sslErr)
+		}
+		creds = sslCreds
+	} else {
+		creds = insecure.NewCredentials()
+	}
+
+	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(creds))
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+```
+### Create Server with credentials
+
+```go
+	// define a gRPC server attibutes
+	var grpcOptions grpc.ServerOption
+	var grpcServer *grpc.Server
+
+	// Load .env file
+	envFile, err := godotenv.Read(".env")
+	if err != nil {
+		panic(err.Error())
+	}
+	// Check if SSL_MODE is true, then enable SSL
+	sslMode := envFile["SSL_MODE"]
+	if sslMode == "true" {
+		certFileServer := "ssl/server.crt"
+		keyFileServer := "ssl/server.key"
+		creds, sslErr := credentials.NewServerTLSFromFile(certFileServer, keyFileServer)
+		if sslErr != nil {
+			log.Fatalf("Failed to generate credentials: %v", sslErr)
+		}
+		grpcOptions = grpc.Creds(creds)
+	}
+
+	// Create a gRPC server object
+	grpcServer = grpc.NewServer(grpcOptions)
+```
+### Run client server to test
+```
+make run-server
+make run-client
+```
